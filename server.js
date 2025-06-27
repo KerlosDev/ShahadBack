@@ -27,7 +27,7 @@ dbconnection();
 
 // ✅ Middleware
 app.use(cors({
-  origin: ["http://localhost:3000", "https://hossame-front.vercel.app"],
+  origin: ["http://localhost:3000", "https://www.shahadhany.site"],
   credentials: true,
 }));
 
