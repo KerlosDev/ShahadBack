@@ -2,6 +2,7 @@ const express = require("express");
 const dbconnection = require("./config/database");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const expressRateLimit = require("express-rate-limit");
 
 const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes");
@@ -32,6 +33,15 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Rate Limiting Middleware
+const limiter = expressRateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+app.use(limiter);
 
 app.use('/auth', authRoutes);
 app.use('/active', activitionRoutes);
