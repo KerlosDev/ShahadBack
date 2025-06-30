@@ -40,9 +40,7 @@ exports.createOfferValidator = [
             if (value <= 0) {
                 throw new Error('Discount price must be greater than 0');
             }
-            if (value >= req.body.originalPrice) {
-                throw new Error('Discount price must be less than original price');
-            }
+ 
             return true;
         }),
 
@@ -51,7 +49,7 @@ exports.createOfferValidator = [
         .withMessage('Number of courses is required')
         .isInt({ min: 1 })
         .withMessage('Number of courses must be at least 1'),
-
+            
     check('students')
         .notEmpty()
         .withMessage('Number of students is required')
