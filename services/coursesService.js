@@ -1,7 +1,7 @@
 const axios = require("axios");
 const Course = require("../modules/courseModule");
 const expressAsyncHandler = require("express-async-handler");
-
+const mongoose = require("mongoose");
 // ✅ رفع صورة إلى ImgBB
 const uploadToImgBB = async (buffer) => {
   try {
@@ -129,23 +129,29 @@ const deleteCourse = async (courseId) => {
 const getCourseById = async (req, res) => {
   const { id } = req.params;
 
-  const course = await Course.findById(id).populate({
-    path: 'chapters',
-    select: 'title lessons', // include title and lessons
-    populate: {
-      path: 'lessons',
-      select: 'title' // only include lesson titles
-    }
-  }).populate({
-    path: 'exams',
-    select: 'title', // only include the title field
-  });
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "رابط الكورس غير صالح (ID غير صحيح)." });
+  }
+
+  const course = await Course.findById(id)
+    .populate({
+      path: 'chapters',
+      select: 'title lessons',
+      populate: {
+        path: 'lessons',
+        select: 'title fileName',
+      }
+
+    })
+    .populate({
+      path: 'exams',
+      select: 'title',
+    });
 
   if (!course) {
     return res.status(404).json({ message: "الكورس غير موجود." });
   }
 
-  // Transform the response to include only chapter titles and lesson titles
   const formattedCourse = {
     ...course.toObject(),
     chapters: course.chapters.map(chapter => ({
@@ -153,7 +159,8 @@ const getCourseById = async (req, res) => {
       title: chapter.title,
       lessons: chapter.lessons.map(lesson => ({
         _id: lesson._id,
-        title: lesson.title
+        title: lesson.title,
+        fileName: lesson.fileName // <-- include fileName in response
       }))
     }))
   };
@@ -161,23 +168,26 @@ const getCourseById = async (req, res) => {
   res.status(200).json(formattedCourse);
 };
 
+
 const getCourseByIdAdmin = async (req, res) => {
   const { id } = req.params;
 
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "رابط الكورس غير صالح (ID غير صحيح)." });
+  }
 
-  const course = await Course.findById(id).populate({
-    path: 'chapters', // only include the title field
-  }).populate({
-    path: 'exams', // only include the title field
-  });
+  const course = await Course.findById(id)
+    .populate({ path: 'chapters' })
+    .populate({ path: 'exams' });
 
-  console.log(course)
   if (!course) {
     return res.status(404).json({ message: "الكورس غير موجود." });
   }
 
   res.status(200).json(course);
 };
+
+
 
 
 module.exports = {

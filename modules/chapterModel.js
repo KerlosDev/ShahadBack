@@ -9,6 +9,13 @@ const lessonSchema = new mongoose.Schema({
   videoUrl: {
     type: String,
     required: true,
+  },
+  fileName: {
+    type: String,
+    required: true
+  },
+  fileUrl: {
+    type: String,
   }
 });
 
