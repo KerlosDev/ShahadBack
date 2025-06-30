@@ -18,7 +18,7 @@ const chapterSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  lessons: [lessonSchema], // دروس داخل الفصل
+  lessons: [lessonSchema], //  داخل الفصل
 }, {
   timestamps: true,
 });
