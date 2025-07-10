@@ -2,6 +2,7 @@ const enrollmentModel = require("../modules/enrollmentModel");
 const User = require("../modules/userModule");
 const expressAsyncHandler = require("express-async-handler");
 const WatchHistory = require("../modules/WatchHistory");
+const bcrypt = require("bcryptjs");
 
 const getUserByIdService = async (req, res) => {
     const studentId = req.user._id.toHexString();
@@ -213,11 +214,59 @@ const getUserAllDataById = async (req, res) => {
     }
 };
 
+// Reset user password
+const resetUserPassword = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { newPassword } = req.body;
+
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'
+            });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'المستخدم غير موجود'
+            });
+        }
+
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update the password
+        user.password = hashedPassword;
+
+        // Force logout from current device (optional security measure)
+        user.currentSessionToken = null;
+        user.currentDeviceInfo = null;
+        user.sessionCreatedAt = null;
+
+        await user.save();
+
+        res.status(200).json({
+            status: 'success',
+            message: 'تم تغيير كلمة المرور بنجاح'
+        });
+    } catch (error) {
+        console.error("Password reset error:", error);
+        res.status(500).json({
+            status: 'error',
+            message: 'حدث خطأ في تغيير كلمة المرور'
+        });
+    }
+};
+
 module.exports = {
     getUserByIdService: expressAsyncHandler(getUserByIdService),
     updateUserbyId: expressAsyncHandler(updateUserbyId),
     getAllStudents: expressAsyncHandler(getAllStudents),
     toggleBanStatus: expressAsyncHandler(toggleBanStatus),
     updateLastActive: expressAsyncHandler(updateLastActive),
-    getUserAllDataById: expressAsyncHandler(getUserAllDataById)
+    getUserAllDataById: expressAsyncHandler(getUserAllDataById),
+    resetUserPassword: expressAsyncHandler(resetUserPassword)
 };

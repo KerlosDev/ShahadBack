@@ -168,16 +168,100 @@ exports.updatePaymentStatus = async (req, res) => {
 
 exports.getAllEnrollments = async (req, res) => {
     try {
-        const enrollments = await enrollmentModel.find()
+        // Extract pagination parameters from query
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Extract search and filter parameters
+        const searchQuery = req.query.search || '';
+        const status = req.query.status || '';
+
+        // Extract sorting parameters
+        const sortBy = req.query.sortBy || 'createdAt';
+        const sortOrder = req.query.sortOrder || 'desc';
+        const sortOptions = {};
+
+        // Set sort order based on parameters
+        if (sortBy === 'date') {
+            sortOptions.createdAt = sortOrder === 'desc' ? -1 : 1;
+        } else if (sortBy === 'amount') {
+            sortOptions.price = sortOrder === 'desc' ? -1 : 1;
+        } else {
+            // Default to sorting by createdAt
+            sortOptions.createdAt = sortOrder === 'desc' ? -1 : 1;
+        }
+
+        // Build filter object
+        const filter = {};
+
+        // Add status filter if provided
+        if (status && ['paid', 'pending', 'failed'].includes(status)) {
+            filter.paymentStatus = status;
+        }
+
+        // Get total count of enrollments for pagination info
+        let countQuery = enrollmentModel.find(filter);
+
+        // If search query exists, apply it to count query
+        if (searchQuery) {
+            // We need to fetch IDs first since we're searching across related collections
+            const studentIds = await User.find({
+                $or: [
+                    { email: { $regex: searchQuery, $options: 'i' } },
+                    { phoneNumber: { $regex: searchQuery, $options: 'i' } }
+                ]
+            }).distinct('_id');
+
+            const Course = require("../modules/courseModule");
+            const courseIds = await Course.find({
+                name: { $regex: searchQuery, $options: 'i' }
+            }).distinct('_id');
+
+            countQuery = countQuery.or([
+                { studentId: { $in: studentIds } },
+                { courseId: { $in: courseIds } }
+            ]);
+        }
+
+        const totalEnrollments = await countQuery.countDocuments();
+
+        // Build the main query
+        let query = enrollmentModel.find(filter)
             .populate('courseId')
-            .populate('studentId', 'email phoneNumber')
-            .sort({ createdAt: -1 });
+            .populate('studentId', 'email phoneNumber name')
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(limit);
+
+        // Apply search filter if provided
+        if (searchQuery) {
+            const studentIds = await User.find({
+                $or: [
+                    { email: { $regex: searchQuery, $options: 'i' } },
+                    { phoneNumber: { $regex: searchQuery, $options: 'i' } }
+                ]
+            }).distinct('_id');
+
+            const Course = require("../modules/courseModule");
+            const courseIds = await Course.find({
+                name: { $regex: searchQuery, $options: 'i' }
+            }).distinct('_id');
+
+            query = query.or([
+                { studentId: { $in: studentIds } },
+                { courseId: { $in: courseIds } }
+            ]);
+        }
+
+        const enrollments = await query;
 
         const formattedEnrollments = enrollments.map(enrollment => ({
             _id: enrollment._id,
             userEmail: enrollment.studentId?.email || 'N/A',
             phoneNumber: enrollment.phoneNumber,
-            courseName: enrollment.courseId?.name || 'N/A', // Changed from nameofcourse to name
+            studentName: enrollment.studentId?.name || 'N/A',
+            courseName: enrollment.courseId?.name || 'N/A',
             courseId: enrollment.courseId?._id || null,
             price: enrollment.price,
             paymentStatus: enrollment.paymentStatus,
@@ -186,7 +270,15 @@ exports.getAllEnrollments = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            enrollments: formattedEnrollments
+            enrollments: formattedEnrollments,
+            pagination: {
+                totalItems: totalEnrollments,
+                totalPages: Math.ceil(totalEnrollments / limit),
+                currentPage: page,
+                itemsPerPage: limit,
+                hasNextPage: page < Math.ceil(totalEnrollments / limit),
+                hasPrevPage: page > 1
+            }
         });
     } catch (error) {
         console.error("Get Enrollments Error:", error);

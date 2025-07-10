@@ -1,100 +1,159 @@
-const Notification = require('../modules/notifictionModel');
+const Notification = require('../modules/notificationModel');
 const ApiError = require('../utils/apiError');
 
-exports.createNotification = async ({ userId, message }) => {
-    try {
-        const notification = await Notification.create({
-            userId,
-            message
-        });
-        return notification;
-    } catch (error) {
-        throw new ApiError('Error creating notification', 500);
+class NotificationService {
+    // Create a new notification
+    async createNotification(message, createdBy) {
+        try {
+            const notification = new Notification({
+                message,
+                createdBy
+            });
+
+            await notification.save();
+
+            // Populate the creator's information
+            await notification.populate('createdBy', 'name email');
+
+            return notification;
+        } catch (error) {
+            throw new ApiError('فشل في إنشاء الإشعار', 500);
+        }
     }
-};
 
-exports.getUserNotifications = async (userId, query = {}) => {
-    try {
-        const page = parseInt(query.page) || 1;
-        const limit = parseInt(query.limit) || 10;
-        const skip = (page - 1) * limit;
+    // Get all notifications with pagination
+    async getAllNotifications(page = 1, limit = 10) {
+        try {
+            const skip = (page - 1) * limit;
 
-        const filter = { userId };
+            const notifications = await Notification.find({ isActive: true })
+                .populate('createdBy', 'name email')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit);
 
-        const notifications = await Notification.find(filter)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit);
+            const total = await Notification.countDocuments({ isActive: true });
+            const totalPages = Math.ceil(total / limit);
 
-        const total = await Notification.countDocuments(filter);
+            return {
+                notifications,
+                pagination: {
+                    currentPage: page,
+                    totalPages,
+                    totalItems: total,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1
+                }
+            };
+        } catch (error) {
+            throw new ApiError('فشل في جلب الإشعارات', 500);
+        }
+    }
 
-        return {
-            notifications,
-            pagination: {
-                currentPage: page,
-                totalPages: Math.ceil(total / limit),
-                total
+    // Get notifications for display (including sender's own notifications)
+    async getNotificationsForUser(userId, page = 1, limit = 10) {
+        try {
+            const skip = (page - 1) * limit;
+
+            const notifications = await Notification.find({
+                isActive: true
+                // Show all notifications including sender's own notifications
+            })
+                .populate('createdBy', 'name email')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit);
+
+            const total = await Notification.countDocuments({
+                isActive: true
+            });
+
+            const totalPages = Math.ceil(total / limit);
+
+            return {
+                notifications,
+                pagination: {
+                    currentPage: page,
+                    totalPages,
+                    totalItems: total,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1
+                }
+            };
+        } catch (error) {
+            throw new ApiError('فشل في جلب الإشعارات', 500);
+        }
+    }
+
+    // Get recent notifications for user (last 50, including their own)
+    async getRecentNotificationsForUser(userId) {
+        try {
+            const notifications = await Notification.find({
+                isActive: true
+                // Show all notifications including sender's own notifications
+            })
+                .populate('createdBy', 'name email')
+                .sort({ createdAt: -1 })
+                .limit(50);
+
+            return notifications;
+        } catch (error) {
+            throw new ApiError('فشل في جلب الإشعارات الحديثة', 500);
+        }
+    }
+
+    // Delete a specific notification
+    async deleteNotification(notificationId, userId) {
+        try {
+            const notification = await Notification.findById(notificationId);
+
+            if (!notification) {
+                throw new ApiError('الإشعار غير موجود', 404);
             }
-        };
-    } catch (error) {
-        throw new ApiError('Error fetching notifications', 500);
-    }
-};
 
-exports.markAsRead = async (userId, notificationId) => {
-    try {
-        const notification = await Notification.findOneAndUpdate(
-            { _id: notificationId, userId },
-            { read: true },
-            { new: true }
-        );
+          
 
-        if (!notification) {
-            throw new ApiError('Notification not found', 404);
+            await Notification.findByIdAndDelete(notificationId);
+            return true;
+        } catch (error) {
+            if (error instanceof ApiError) {
+                throw error;
+            }
+            throw new ApiError('فشل في حذف الإشعار', 500);
         }
-
-        return notification;
-    } catch (error) {
-        if (error instanceof ApiError) throw error;
-        throw new ApiError('Error marking notification as read', 500);
     }
-};
 
-exports.markAllAsRead = async (userId) => {
-    try {
-        const result = await Notification.updateMany(
-            { userId, read: false },
-            { read: true }
-        );
-        return result;
-    } catch (error) {
-        throw new ApiError('Error marking notifications as read', 500);
-    }
-};
-
-exports.deleteNotification = async (userId, notificationId) => {
-    try {
-        const notification = await Notification.findOneAndDelete({
-            _id: notificationId,
-            userId
-        });
-
-        if (!notification) {
-            throw new ApiError('Notification not found', 404);
+    // Delete all notifications (admin only)
+    async deleteAllNotifications(userId) {
+        try {
+            await Notification.deleteMany({ createdBy: userId });
+            return true;
+        } catch (error) {
+            throw new ApiError('فشل في حذف جميع الإشعارات', 500);
         }
-
-        return notification;
-    } catch (error) {
-        if (error instanceof ApiError) throw error;
-        throw new ApiError('Error deleting notification', 500);
     }
-};
 
-exports.deleteAllNotifications = async (userId) => {
-    try {
-        const result = await Notification.deleteMany({ userId });
-        return result;
-    } catch (error) {
-        throw new ApiError('Error deleting notifications', 500);
+    // Soft delete notification
+    async softDeleteNotification(notificationId, userId) {
+        try {
+            const notification = await Notification.findById(notificationId);
+
+            if (!notification) {
+                throw new ApiError('الإشعار غير موجود', 404);
+            }
+ 
+
+            notification.isActive = false;
+            await notification.save();
+
+            return notification;
+        } catch (error) {
+            if (error instanceof ApiError) {
+                throw error;
+            }
+            throw new ApiError('فشل في حذف الإشعار', 500);
+        }
     }
-};
+}
+
+module.exports = new NotificationService();

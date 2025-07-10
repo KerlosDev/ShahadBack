@@ -1,42 +1,72 @@
 const express = require('express');
+const { body } = require('express-validator');
 const { protect, isAdmin } = require('../services/authService');
-const {
-    createNotification,
-    getUserNotifications,
-    deleteNotification,
-    deleteAllNotifications
-} = require('../services/notificationService');
+const notificationService = require('../services/notificationService');
+const validatorMiddleware = require('../middleware/validMiddleware');
 
 const router = express.Router();
 
-// Protect all routes
+// Protected routes (require authentication)
 router.use(protect);
 
-// Create a new notification
-router.post('/', isAdmin, async (req, res) => {
+// Validation rules for creating notifications
+const createNotificationValidation = [
+    body('message')
+        .isLength({ min: 1, max: 500 })
+        .withMessage('رسالة الإشعار يجب أن تكون بين 1 و 500 حرف')
+        .trim()
+];
+
+// Create a new notification (admin only)
+router.post('/', isAdmin, createNotificationValidation, validatorMiddleware, async (req, res) => {
     try {
         const { message } = req.body;
-        const notification = await createNotification({
-            userId: req.user._id,
-            message
-        });
+        const createdBy = req.user._id;
+
+        const notification = await notificationService.createNotification(message, createdBy);
 
         res.status(201).json({
             success: true,
+            message: 'تم إنشاء الإشعار بنجاح',
             data: notification
         });
     } catch (error) {
         res.status(error.statusCode || 500).json({
             success: false,
-            message: error.message
+            message: error.message || 'حدث خطأ في الخادم'
         });
     }
 });
 
-// Get user notifications with pagination and filters
+// Get all notifications for admin management
+router.get('/admin', isAdmin, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const result = await notificationService.getAllNotifications(page, limit);
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.message || 'حدث خطأ في الخادم'
+        });
+    }
+});
+
+// Get notifications for regular users (excluding their own)
 router.get('/', async (req, res) => {
     try {
-        const result = await getUserNotifications(req.user._id, req.query);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const userId = req.user._id;
+
+        const result = await notificationService.getNotificationsForUser(userId, page, limit);
+
         res.json({
             success: true,
             data: result
@@ -44,39 +74,63 @@ router.get('/', async (req, res) => {
     } catch (error) {
         res.status(error.statusCode || 500).json({
             success: false,
-            message: error.message
+            message: error.message || 'حدث خطأ في الخادم'
         });
     }
 });
 
-// Delete a notification
-router.delete('/:notificationId',   isAdmin, async (req, res) => {
+// Get recent notifications for user (for notification button)
+router.get('/recent', async (req, res) => {
     try {
-        const notification = await deleteNotification(req.user._id, req.params.notificationId);
+        const userId = req.user._id;
+        const notifications = await notificationService.getRecentNotificationsForUser(userId);
+
         res.json({
             success: true,
-            data: notification
+            data: notifications
         });
     } catch (error) {
         res.status(error.statusCode || 500).json({
             success: false,
-            message: error.message
+            message: error.message || 'حدث خطأ في الخادم'
         });
     }
 });
 
-// Delete all notifications
-router.delete('/',  isAdmin, async (req, res) => {
+// Delete a specific notification (admin or creator only)
+router.delete('/:id',isAdmin, async (req, res) => {
     try {
-        const result = await deleteAllNotifications(req.user._id);
+        const notificationId = req.params.id;
+        const userId = req.user._id;
+
+        await notificationService.deleteNotification(notificationId, userId);
+
         res.json({
             success: true,
-            data: result
+            message: 'تم حذف الإشعار بنجاح'
         });
     } catch (error) {
         res.status(error.statusCode || 500).json({
             success: false,
-            message: error.message
+            message: error.message || 'حدث خطأ في الخادم'
+        });
+    }
+});
+
+// Delete all notifications created by the current user (admin only)
+router.delete('/', isAdmin, async (req, res) => {
+    try {
+        const userId = req.user._id;
+        await notificationService.deleteAllNotifications(userId);
+
+        res.json({
+            success: true,
+            message: 'تم حذف جميع الإشعارات بنجاح'
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.message || 'حدث خطأ في الخادم'
         });
     }
 });

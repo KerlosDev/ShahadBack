@@ -4,7 +4,7 @@ const { validationResult } = require('express-validator');
 const User = require('../modules/userModule');
 const { validateSignUp, validateSignIn } = require('../validator/userValid');
 const { signUp, signIn, logout, protect, isAdmin } = require('../services/authService');
-const { getUserByIdService } = require('../services/userServise');
+const { getUserByIdService, resetUserPassword } = require('../services/userServise');
 
 
 const router = express.Router();
@@ -25,4 +25,5 @@ router.get('/validate', protect, (req, res) => {
     });
 });
 router.get('/user', protect, isAdmin, getUserByIdService);
+router.post('/reset-password/:userId', protect, isAdmin, resetUserPassword);
 module.exports = router;
