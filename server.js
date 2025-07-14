@@ -19,6 +19,7 @@ const offerRoutes = require("./routes/offerRoutes");
 const statsRoutes = require("./routes/statsRoutes");
 const bookRoutes = require("./routes/bookRoutes");
 const bookOrderRoutes = require("./routes/bookOrderRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 
 dotenv.config();
 const app = express();
@@ -58,6 +59,7 @@ app.use('/offers', offerRoutes);
 app.use('/stats', statsRoutes);
 app.use('/books', bookRoutes);
 app.use('/book-orders', bookOrderRoutes);
+app.use('/payment', paymentRoutes);
 
 app.listen(PORT, () => {
   console.log(`The server is running on port ${PORT}`);

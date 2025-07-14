@@ -1,39 +1,49 @@
 const { default: mongoose } = require("mongoose");
 const Enrollment = require("../modules/enrollmentModel");
 const User = require("../modules/userModule");
+const Course = require("../modules/courseModule");
 const enrollmentModel = require("../modules/enrollmentModel");
 
 exports.createEnrollStudent = async (req, res) => {
     try {
         const { courseId } = req.body;
         const studentId = req.user._id.toHexString();
+        const phoneNumber = req.body.phoneNumber;
 
         console.log(studentId)
 
-
+        const user = await User.findOne({ _id: studentId });
+        if (!user) {
+            return res.status(404).json({ message: "الطالب غير موجود." });
+        }
         // Check if already enrolled
         const alreadyEnrolled = await Enrollment.findOne({ studentId, courseId });
         if (alreadyEnrolled) {
             return res.status(400).json({ message: "الطالب مشترك بالفعل في الكورس." });
         }
 
-        const user = await User.findOne({ _id: studentId });
-        if (!user) {
-            return res.status(404).json({ message: "الطالب غير موجود." });
+
+        // Fetch course information to check if it's free
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({ message: "الكورس غير موجود." });
         }
 
-        const phoneNumber = user.phoneNumber
+
+        // Determine payment status based on whether the course is free
+        const paymentStatus = course.isFree ? "paid" : "pending";
+        const price = course.isFree ? 0 : (req.body.price || course.price);
 
         const enrollment = await Enrollment.create({
             studentId,
             courseId,
-            price: req.body.price,
+            price: price,
             phoneNumber,
-            paymentStatus: "pending", // لو فيه بايمنت حقيقي هتغيره حسب اللوجيك
+            paymentStatus: paymentStatus,
         });
 
         res.status(201).json({
-            message: "تم الاشتراك بنجاح",
+            message: course.isFree ? "تم الاشتراك في الكورس المجاني بنجاح" : "تم الاشتراك بنجاح",
             enrollment,
         });
     } catch (error) {
