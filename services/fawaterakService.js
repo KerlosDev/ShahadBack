@@ -4,13 +4,18 @@ const { v4: uuidv4 } = require('uuid');
 
 class FawaterakService {
     constructor() {
-        this.baseURL = process.env.FAWATERAK_BASE_URL || 'https://app.fawaterak.com/api/v2';
-        this.merchantCode = process.env.FAWATERAK_MERCHANT_CODE;
-        this.secretKey = process.env.FAWATERAK_SECRET_KEY;
-        this.publicKey = process.env.FAWATERAK_PUBLIC_KEY;
+        this.baseURL = process.env.FAWATERAK_BASE_URL || 'https://staging.fawaterk.com/api/v2';
+        this.merchantCode = process.env.FAWATERAK_API_KEY;
+        this.secretKey = process.env.FAWATERAK_API_SECRET;
+        this.webhookSecret = process.env.FAWATERAK_WEBHOOK_SECRET;
 
-        if (!this.merchantCode || !this.secretKey || !this.publicKey) {
-            throw new Error('Fawaterak credentials are not properly configured');
+        if (!this.merchantCode || !this.secretKey) {
+            console.error('Missing Fawaterak credentials:', {
+                hasApiKey: !!this.merchantCode,
+                hasApiSecret: !!this.secretKey,
+                hasWebhookSecret: !!this.webhookSecret
+            });
+            throw new Error('Fawaterak credentials are not properly configured. Check FAWATERAK_API_KEY and FAWATERAK_API_SECRET');
         }
     }
 
@@ -137,12 +142,34 @@ class FawaterakService {
     // Verify webhook signature
     verifyWebhookSignature(payload, receivedSignature) {
         try {
-            const calculatedSignature = this.generateSignature(payload);
-            return calculatedSignature === receivedSignature;
+            // For webhook verification, we should use the webhook secret
+            const webhookSignature = this.generateWebhookSignature(payload);
+            return webhookSignature === receivedSignature;
         } catch (error) {
             console.error('Webhook signature verification error:', error);
             return false;
         }
+    }
+
+    // Generate webhook signature (different from API signature)
+    generateWebhookSignature(data) {
+        const sortedKeys = Object.keys(data).sort();
+        let signatureString = '';
+
+        sortedKeys.forEach(key => {
+            if (data[key] !== null && data[key] !== undefined && data[key] !== '') {
+                signatureString += `${key}=${data[key]}&`;
+            }
+        });
+
+        // Remove trailing &
+        signatureString = signatureString.slice(0, -1);
+
+        // Add webhook secret key
+        signatureString += this.webhookSecret;
+
+        // Generate SHA256 hash
+        return crypto.createHash('sha256').update(signatureString).digest('hex');
     }
 
     // Get supported payment methods
