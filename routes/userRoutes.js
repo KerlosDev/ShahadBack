@@ -21,15 +21,43 @@ router.use(protect);
 // Admin route to get all students' status
 router.get('/all-students-status', isAdmin, async (req, res) => {
     try {
-        // Get all users that are students (not admins)
-        const students = await User.find()
+        // Extract pagination parameters
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const sortBy = req.query.sortBy || 'views'; // 'views', 'recent', 'inactive'
+        const search = req.query.search || '';
+
+        const skip = (page - 1) * limit;
+
+        // Build search query - exclude admin users
+        let searchQuery = { role: { $ne: 'admin' } };
+        if (search) {
+            searchQuery = {
+                role: { $ne: 'admin' },
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } }
+                ]
+            };
+        }
+
+        // Get total count for pagination
+        const totalStudents = await User.countDocuments(searchQuery);
+
+        // Get students with pagination
+        const students = await User.find(searchQuery)
             .select('name phoneNumber parentPhoneNumber email')
-            .lean();
+            .lean()
+            .skip(skip)
+            .limit(limit);
 
         if (!students || students.length === 0) {
             return res.json({
                 success: true,
                 count: 0,
+                totalPages: 0,
+                currentPage: page,
+                totalStudents: totalStudents,
                 data: []
             });
         }
@@ -82,10 +110,51 @@ router.get('/all-students-status', isAdmin, async (req, res) => {
             };
         }));
 
+        // Sort students based on sortBy parameter
+        let sortedStudentsStatus = [...studentsStatus];
+        switch (sortBy) {
+            case 'views':
+                sortedStudentsStatus.sort((a, b) =>
+                    b.activityStatus.totalWatchedLessons - a.activityStatus.totalWatchedLessons
+                );
+                break;
+            case 'recent':
+                sortedStudentsStatus.sort((a, b) => {
+                    const dateA = new Date(a.activityStatus.lastActivity || 0);
+                    const dateB = new Date(b.activityStatus.lastActivity || 0);
+                    return dateB - dateA;
+                });
+                break;
+            case 'inactive':
+                sortedStudentsStatus.sort((a, b) => {
+                    // Priority: never_active > inactive > active
+                    const statusPriority = {
+                        'not enrolled': 3,
+                        'inactive': 2,
+                        'active': 1
+                    };
+                    const priorityA = statusPriority[a.activityStatus.status] || 0;
+                    const priorityB = statusPriority[b.activityStatus.status] || 0;
+
+                    if (priorityA === priorityB) {
+                        const dateA = new Date(a.activityStatus.lastActivity || 0);
+                        const dateB = new Date(b.activityStatus.lastActivity || 0);
+                        return dateB - dateA;
+                    }
+                    return priorityB - priorityA;
+                });
+                break;
+        }
+
         return res.json({
             success: true,
-            count: studentsStatus.length,
-            data: studentsStatus
+            count: sortedStudentsStatus.length,
+            totalPages: Math.ceil(totalStudents / limit),
+            currentPage: page,
+            totalStudents: totalStudents,
+            hasNextPage: page < Math.ceil(totalStudents / limit),
+            hasPreviousPage: page > 1,
+            data: sortedStudentsStatus
         });
 
     } catch (error) {
@@ -97,7 +166,7 @@ router.get('/all-students-status', isAdmin, async (req, res) => {
         });
     }
 });
- 
+
 
 // Regular user routes
 router.get('/', getUserByIdService);

@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const fetch = require('node-fetch');
 const { v4: uuidv4 } = require('uuid');
 
 class FawaterakService {
@@ -72,6 +71,11 @@ class FawaterakService {
             // Generate signature
             requestData.signature = this.generateSignature(requestData);
 
+            console.log('Fawaterak Request Data:', {
+                ...requestData,
+                signature: requestData.signature.substring(0, 10) + '...' // Only show first 10 chars of signature
+            });
+
             const response = await fetch(`${this.baseURL}/invoiceInitPay`, {
                 method: 'POST',
                 headers: {
@@ -80,7 +84,14 @@ class FawaterakService {
                 body: JSON.stringify(requestData)
             });
 
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Fawaterak API Error Response:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
             const result = await response.json();
+            console.log('Fawaterak API Response:', result);
 
             if (result.status === 'success') {
                 return {
@@ -91,12 +102,18 @@ class FawaterakService {
                     data: result.data
                 };
             } else {
-                throw new Error(result.message || 'Failed to create invoice');
+                const errorMessage = result.message || result.error || 'Failed to create invoice';
+                console.error('Fawaterak Error:', result);
+                throw new Error(errorMessage);
             }
 
         } catch (error) {
             console.error('Fawaterak createInvoice error:', error);
-            throw new Error(`Payment initialization failed: ${error.message}`);
+            // Ensure we always throw a proper Error object with a string message
+            const errorMessage = error instanceof Error ? error.message :
+                typeof error === 'string' ? error :
+                    JSON.stringify(error);
+            throw new Error(`Payment initialization failed: ${errorMessage}`);
         }
     }
 
@@ -118,7 +135,14 @@ class FawaterakService {
                 body: JSON.stringify(requestData)
             });
 
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Fawaterak Status API Error Response:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
             const result = await response.json();
+            console.log('Fawaterak Status API Response:', result);
 
             if (result.status === 'success') {
                 return {
@@ -130,12 +154,18 @@ class FawaterakService {
                     data: result.data
                 };
             } else {
-                throw new Error(result.message || 'Failed to get payment status');
+                const errorMessage = result.message || result.error || 'Failed to get payment status';
+                console.error('Fawaterak Status Error:', result);
+                throw new Error(errorMessage);
             }
 
         } catch (error) {
             console.error('Fawaterak checkPaymentStatus error:', error);
-            throw new Error(`Payment status check failed: ${error.message}`);
+            // Ensure we always throw a proper Error object with a string message
+            const errorMessage = error instanceof Error ? error.message :
+                typeof error === 'string' ? error :
+                    JSON.stringify(error);
+            throw new Error(`Payment status check failed: ${errorMessage}`);
         }
     }
 
