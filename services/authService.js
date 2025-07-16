@@ -205,3 +205,4 @@ exports.isAllow = (...roles) => {
 };
 
 exports.isAdmin = exports.isAllow('admin');
+exports.isAdminOrInstructor = exports.isAllow('admin', 'instructor');

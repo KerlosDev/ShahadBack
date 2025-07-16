@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const { validationResult } = require('express-validator');
 const User = require('../modules/userModule');
 const { validateSignUp, validateSignIn } = require('../validator/userValid');
-const { signUp, signIn, logout, protect, isAdmin } = require('../services/authService');
+const { signUp, signIn, logout, protect, isAdmin, isAdminOrInstructor } = require('../services/authService');
 const { getUserByIdService, resetUserPassword } = require('../services/userServise');
 
 
@@ -24,6 +24,6 @@ router.get('/validate', protect, (req, res) => {
         }
     });
 });
-router.get('/user', protect, isAdmin, getUserByIdService);
+router.get('/user', protect, isAdminOrInstructor, getUserByIdService);
 router.post('/reset-password/:userId', protect, isAdmin, resetUserPassword);
 module.exports = router;

@@ -44,34 +44,39 @@ const getExamHistory = async (studentId, examTitle) => {
 
 // ✅ Get all exam results for all students
 const getAllExamResults = async () => {
-  return await StudentExamResult.find()
+  const results = await StudentExamResult.find()
     .populate('studentId', 'name email')
     .sort({ createdAt: -1 });
+
+  // Filter out results where studentId is null (deleted users)
+  return results.filter(result => result.studentId && result.studentId._id);
 };
 
 // ✅ حساب ترتيب الطلاب بناءً على متوسط درجاتهم
 const getStudentsRankings = async () => {
   const all = await StudentExamResult.find().populate('studentId', 'name email');
 
-  const studentsWithScores = all.map(student => {
-    let totalCorrect = 0;
-    let totalQuestions = 0;
+  const studentsWithScores = all
+    .filter(student => student.studentId && student.studentId._id) // Filter out null studentId
+    .map(student => {
+      let totalCorrect = 0;
+      let totalQuestions = 0;
 
-    student.results.forEach(result => {
-      totalCorrect += result.correctAnswers;
-      totalQuestions += result.totalQuestions;
+      student.results.forEach(result => {
+        totalCorrect += result.correctAnswers;
+        totalQuestions += result.totalQuestions;
+      });
+
+      const score = totalQuestions > 0 ? totalCorrect / totalQuestions : 0;
+
+      return {
+        studentId: student.studentId._id,
+        name: student.studentId.name,
+        email: student.studentId.email,
+        score: score,
+        percentage: Math.round(score * 100)
+      };
     });
-
-    const score = totalQuestions > 0 ? totalCorrect / totalQuestions : 0;
-
-    return {
-      studentId: student.studentId._id,
-      name: student.studentId.name,
-      email: student.studentId.email,
-      score: score,
-      percentage: Math.round(score * 100)
-    };
-  });
 
   const sorted = studentsWithScores.sort((a, b) => b.score - a.score);
 
@@ -80,16 +85,21 @@ const getStudentsRankings = async () => {
 
 // ✅ البحث عن ترتيب طالب معين
 const getStudentRankById = async (targetId) => {
-  const rankings = await getStudentsRankings();
+  try {
+    const rankings = await getStudentsRankings();
 
-  const index = rankings.findIndex(r => r.studentId.toString() === targetId.toString());
+    const index = rankings.findIndex(r => r.studentId && r.studentId.toString() === targetId.toString());
 
-  if (index === -1) return null;
+    if (index === -1) return null;
 
-  return {
-    rank: index + 1,
-    ...rankings[index]
-  };
+    return {
+      rank: index + 1,
+      ...rankings[index]
+    };
+  } catch (error) {
+    console.error('Error in getStudentRankById:', error);
+    throw error;
+  }
 };
 
 // ✅ تصدير جميع الدوال

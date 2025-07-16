@@ -6,7 +6,7 @@ const {
   getAllExamResults
 } = require('../services/examResltsServise');
 
-const { protect, isAdmin } = require('../services/authService');
+const { protect, isAdmin, isAdminOrInstructor } = require('../services/authService');
 
 const router = express.Router();
 
@@ -20,12 +20,13 @@ router.get('/getMe', protect, async (req, res) => {
   }
 });
 
-router.get('/all', protect, isAdmin, async (req, res) => {
+router.get('/all', protect, isAdminOrInstructor, async (req, res) => {
   try {
     const results = await getAllExamResults();
     res.json({ success: true, data: results });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error fetching all exam results:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -43,7 +44,7 @@ router.post('/create', protect, async (req, res) => {
   }
 });
 
-router.get('/:studentId', protect,isAdmin, async (req, res) => {
+router.get('/:studentId', protect, isAdminOrInstructor, async (req, res) => {
   try {
     const { studentId } = req.params;
     const results = await getResultsByStudent(studentId);
@@ -56,7 +57,7 @@ router.get('/:studentId', protect,isAdmin, async (req, res) => {
   }
 });
 
-router.get('/result/:studentId',protect, isAdmin, async (req, res) => {
+router.get('/result/:studentId', protect, isAdminOrInstructor, async (req, res) => {
   try {
     const { studentId } = req.params;
     const results = await getResultsByStudent(studentId);
