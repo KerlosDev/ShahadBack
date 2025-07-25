@@ -6,6 +6,7 @@ const dotenv = require("dotenv");
 const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes");
 const activitionRoutes = require("./routes/activitionRoutes");
+const activePackageRoutes = require("./routes/activePackageRoutes");
 const chapterRoutes = require("./routes/chapterRoutes");
 const examRoutes = require("./routes/examRoutes");
 const courseRoutes = require("./routes/courseRoutes");
@@ -20,6 +21,10 @@ const bookRoutes = require("./routes/bookRoutes");
 const bookOrderRoutes = require("./routes/bookOrderRoutes");
 const courseAnalyticsRoutes = require("./routes/courseAnalyticsRoutes");
 const courseWithEnrollmentRoutes = require("./routes/courseWithEnrollmentRoutes");
+const packageRoutes = require("./routes/packageRoutes");
+const packageEnrollmentRoutes = require("./routes/packageEnrollmentRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const packagePaymentRoutes = require("./routes/packagePaymentRoutes");
 
 dotenv.config();
 const app = express();
@@ -37,6 +42,7 @@ app.use(express.json());
 
 app.use('/auth', authRoutes);
 app.use('/active', activitionRoutes);
+app.use('/active-package', activePackageRoutes);
 app.use('/chapter', chapterRoutes);
 app.use('/exam', examRoutes);
 app.use('/course', courseRoutes);
@@ -52,6 +58,10 @@ app.use('/books', bookRoutes);
 app.use('/book-orders', bookOrderRoutes);
 app.use('/course-analytics', courseAnalyticsRoutes);
 app.use('/course-data', courseWithEnrollmentRoutes);
+app.use('/packages', packageRoutes);
+app.use('/package-enrollments', packageEnrollmentRoutes);
+app.use('/payments', paymentRoutes);
+app.use('/package-payments', packagePaymentRoutes);
 
 app.listen(PORT, () => {
   console.log(`The server is running on port ${PORT}`);
