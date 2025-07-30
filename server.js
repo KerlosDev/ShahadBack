@@ -21,8 +21,10 @@ const bookRoutes = require("./routes/bookRoutes");
 const bookOrderRoutes = require("./routes/bookOrderRoutes");
 const courseAnalyticsRoutes = require("./routes/courseAnalyticsRoutes");
 const courseWithEnrollmentRoutes = require("./routes/courseWithEnrollmentRoutes");
-const packageRoutes = require("./routes/packageRoutes");
- 
+const packageRoutes = require("./routes/packageRoutes"); 
+const dashboardStatsRoutes = require("./routes/dashboardStatsRoutes");
+
+
 
 dotenv.config();
 const app = express();
@@ -32,8 +34,8 @@ dbconnection();
 
 // ✅ Middleware
 app.use(cors({
-  origin: ["http://localhost:3000", "https://waltere.vercel.app"],
-  
+  origin: ["http://localhost:3000", "https://waltere.vercel.app", "http://192.168.1.3:3000"],
+
   credentials: true,
 }));
 
@@ -45,6 +47,7 @@ app.use('/active-package', activePackageRoutes);
 app.use('/chapter', chapterRoutes);
 app.use('/exam', examRoutes);
 app.use('/course', courseRoutes);
+app.use('/dashboard', dashboardStatsRoutes);
 app.use('/user', userRoutes);
 app.use('/examResult', examResultsRouter);
 app.use('/watchHistory', watchHistoryRoutes);
@@ -60,6 +63,8 @@ app.use('/course-data', courseWithEnrollmentRoutes);
 app.use('/packages', packageRoutes); 
 
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`The server is running on port ${PORT}`);
+  console.log(`Local: http://localhost:${PORT}`);
+  console.log(`Network: http://192.168.1.3:${PORT}`);
 });

@@ -30,6 +30,7 @@ const getCourseWithEnrollmentCheck = async (req, res) => {
         const course = await Course.findOne({
             _id: courseId,
             isDraft: false,
+            
             // Remove the publishStatus filter for now to see what's happening
         })
             .populate({
