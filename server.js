@@ -21,8 +21,10 @@ const bookRoutes = require("./routes/bookRoutes");
 const bookOrderRoutes = require("./routes/bookOrderRoutes");
 const courseAnalyticsRoutes = require("./routes/courseAnalyticsRoutes");
 const courseWithEnrollmentRoutes = require("./routes/courseWithEnrollmentRoutes");
-const packageRoutes = require("./routes/packageRoutes"); 
+const packageRoutes = require("./routes/packageRoutes");
+
 const dashboardStatsRoutes = require("./routes/dashboardStatsRoutes");
+const studentRatingRoutes = require("./routes/studentRatingRoutes");
 
 
 
@@ -60,7 +62,10 @@ app.use('/books', bookRoutes);
 app.use('/book-orders', bookOrderRoutes);
 app.use('/course-analytics', courseAnalyticsRoutes);
 app.use('/course-data', courseWithEnrollmentRoutes);
-app.use('/packages', packageRoutes); 
+app.use('/packages', packageRoutes);
+
+// Student rating routes
+app.use('/student-ratings', studentRatingRoutes);
 
 
 app.listen(PORT, '0.0.0.0', () => {
