@@ -7,7 +7,8 @@ const {
     getAllStudents,
     toggleBanStatus,
     updateLastActive,
-    getUserAllDataById
+    getUserAllDataById,
+    deleteStudentById
 } = require('../services/userServise');
 const WatchHistory = require('../modules/WatchHistory');
 const Enrollment = require('../modules/enrollmentModel');
@@ -262,6 +263,7 @@ router.put('/last-active', updateLastActive);
 router.use('/students', isAdmin);
 router.get('/students', getAllStudents);
 router.put('/students/:studentId/ban', toggleBanStatus);
+router.delete('/students/:studentId', deleteStudentById);
 
 // Get all data for user by ID (admin only)
 router.get('/:id/all-data', isAdmin, getUserAllDataById);
