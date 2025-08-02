@@ -3,7 +3,9 @@ const {
   saveExamResult,
   getResultsByStudent,
   getExamHistory,
-  getAllExamResults
+  getAllExamResults,
+  getStudentsByExam,
+  getTopPerformers
 } = require('../services/examResltsServise');
 
 const { protect, isAdmin, isAdminOrInstructor } = require('../services/authService');
@@ -30,6 +32,27 @@ router.get('/all', protect, isAdminOrInstructor, async (req, res) => {
   }
 });
 
+router.get('/by-exam/:examTitle', protect, isAdminOrInstructor, async (req, res) => {
+  try {
+    const { examTitle } = req.params;
+    const results = await getStudentsByExam(examTitle);
+    res.json({ success: true, data: results });
+  } catch (err) {
+    console.error('Error fetching students by exam:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/top-performers', protect, isAdminOrInstructor, async (req, res) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit) : 3;
+    const results = await getTopPerformers(limit);
+    res.json({ success: true, data: results });
+  } catch (err) {
+    console.error('Error fetching top performers:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 
 router.post('/create', protect, async (req, res) => {
@@ -79,5 +102,18 @@ router.get('/:studentId/history/:examTitle', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// Add this new route for getting students by examId
+router.get('/by-exam-id/:examId', protect, isAdminOrInstructor, async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const results = await getStudentsByExamId(examId);
+    res.json({ success: true, data: results });
+  } catch (err) {
+    console.error('Error fetching students by exam ID:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Keep the existing route for backward compatibility
 
 module.exports = router;

@@ -45,7 +45,7 @@ const getExamHistory = async (studentId, examTitle) => {
 // ✅ Get all exam results for all students
 const getAllExamResults = async () => {
   const results = await StudentExamResult.find()
-    .populate('studentId', 'name email')
+    .populate('studentId', 'name email phoneNumber')
     .sort({ createdAt: -1 });
 
   // Filter out results where studentId is null (deleted users)
@@ -102,6 +102,100 @@ const getStudentRankById = async (targetId) => {
   }
 };
 
+// ✅ Get students by exam title
+const getStudentsByExam = async (examTitle) => {
+  const results = await StudentExamResult.find({ "results.examTitle": examTitle })
+    .populate('studentId', 'name email phoneNumber')
+    .sort({ createdAt: -1 });
+
+  // Filter and format the results to return only relevant data
+  const formattedResults = results
+    .filter(result => result.studentId && result.studentId._id)
+    .map(student => {
+      // Get all attempts for this exam by this student
+      const examAttempts = student.results.filter(r => r.examTitle === examTitle);
+
+      // Find the best attempt (highest score)
+      const bestAttempt = examAttempts.reduce((best, current) => {
+        const currentScore = (current.correctAnswers / current.totalQuestions) * 100;
+        const bestScore = best ? (best.correctAnswers / best.totalQuestions) * 100 : 0;
+        return currentScore > bestScore ? current : best;
+      }, null);
+
+      return {
+        student: {
+          id: student.studentId._id,
+          name: student.studentId.name,
+          email: student.studentId.email,
+          phoneNumber: student.studentId.phoneNumber || ''
+        },
+        bestAttempt: bestAttempt ? {
+          score: Math.round((bestAttempt.correctAnswers / bestAttempt.totalQuestions) * 100),
+          attemptNumber: bestAttempt.attemptNumber,
+          examDate: bestAttempt.examDate,
+          correctAnswers: bestAttempt.correctAnswers,
+          totalQuestions: bestAttempt.totalQuestions
+        } : null,
+        totalAttempts: examAttempts.length
+      };
+    });
+
+  // Sort by best score, descending
+  return formattedResults.sort((a, b) =>
+    b.bestAttempt.score - a.bestAttempt.score
+  );
+};
+
+// Add this new function to get students by examId instead of examTitle
+const getStudentsByExamId = async (examId) => {
+  const results = await StudentExamResult.find({ "results.examId": examId })
+    .populate('studentId', 'name email phoneNumber')
+    .sort({ createdAt: -1 });
+
+  // Filter and format the results to return only relevant data
+  const formattedResults = results
+    .filter(result => result.studentId && result.studentId._id)
+    .map(student => {
+      // Get all attempts for this exam by this student
+      const examAttempts = student.results.filter(r => r.examId === examId);
+
+      // Find the best attempt (highest score)
+      const bestAttempt = examAttempts.reduce((best, current) => {
+        const currentScore = (current.correctAnswers / current.totalQuestions) * 100;
+        const bestScore = best ? (best.correctAnswers / best.totalQuestions) * 100 : 0;
+        return currentScore > bestScore ? current : best;
+      }, null);
+
+      return {
+        student: {
+          id: student.studentId._id,
+          name: student.studentId.name,
+          email: student.studentId.email,
+          phoneNumber: student.studentId.phoneNumber || ''
+        },
+        bestAttempt: bestAttempt ? {
+          score: Math.round((bestAttempt.correctAnswers / bestAttempt.totalQuestions) * 100),
+          attemptNumber: bestAttempt.attemptNumber,
+          examDate: bestAttempt.examDate,
+          correctAnswers: bestAttempt.correctAnswers,
+          totalQuestions: bestAttempt.totalQuestions
+        } : null,
+        totalAttempts: examAttempts.length
+      };
+    });
+
+  // Sort by best score, descending
+  return formattedResults.sort((a, b) =>
+    b.bestAttempt.score - a.bestAttempt.score
+  );
+};
+
+// ✅ Get top performers across all exams
+const getTopPerformers = async (limit = 3) => {
+  const rankings = await getStudentsRankings();
+  return rankings.slice(0, limit);
+};
+
 // ✅ تصدير جميع الدوال
 module.exports = {
   saveExamResult,
@@ -109,5 +203,8 @@ module.exports = {
   getExamHistory,
   getAllExamResults,
   getStudentsRankings,
-  getStudentRankById
+  getStudentRankById,
+  getStudentsByExam,
+  getTopPerformers,
+  getStudentsByExamId
 };
