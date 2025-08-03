@@ -5,7 +5,10 @@ const {
   getExamHistory,
   getAllExamResults,
   getStudentsByExam,
-  getTopPerformers
+  getTopPerformers,
+  getStudentsByExamId,
+  getMonthlyComparison,
+  getPerformanceTrends
 } = require('../services/examResltsServise');
 
 const { protect, isAdmin, isAdminOrInstructor } = require('../services/authService');
@@ -50,6 +53,40 @@ router.get('/top-performers', protect, isAdminOrInstructor, async (req, res) => 
     res.json({ success: true, data: results });
   } catch (err) {
     console.error('Error fetching top performers:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Monthly comparison endpoint (must be before /:studentId route)
+router.get('/monthly-comparison', protect, isAdminOrInstructor, async (req, res) => {
+  try {
+    const comparison = await getMonthlyComparison();
+    res.json({ success: true, data: comparison });
+  } catch (err) {
+    console.error('Error fetching monthly comparison:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Performance trends endpoint (must be before /:studentId route)
+router.get('/performance-trends', protect, isAdminOrInstructor, async (req, res) => {
+  try {
+    const trends = await getPerformanceTrends();
+    res.json({ success: true, data: trends });
+  } catch (err) {
+    console.error('Error fetching performance trends:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Add this new route for getting students by examId (must be before /:studentId route)
+router.get('/by-exam-id/:examId', protect, isAdminOrInstructor, async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const results = await getStudentsByExamId(examId);
+    res.json({ success: true, data: results });
+  } catch (err) {
+    console.error('Error fetching students by exam ID:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -102,18 +139,5 @@ router.get('/:studentId/history/:examTitle', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-// Add this new route for getting students by examId
-router.get('/by-exam-id/:examId', protect, isAdminOrInstructor, async (req, res) => {
-  try {
-    const { examId } = req.params;
-    const results = await getStudentsByExamId(examId);
-    res.json({ success: true, data: results });
-  } catch (err) {
-    console.error('Error fetching students by exam ID:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Keep the existing route for backward compatibility
 
 module.exports = router;

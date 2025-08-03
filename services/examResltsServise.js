@@ -196,6 +196,117 @@ const getTopPerformers = async (limit = 3) => {
   return rankings.slice(0, limit);
 };
 
+// ✅ Get monthly comparison data
+const getMonthlyComparison = async () => {
+  try {
+    const results = await StudentExamResult.find()
+      .populate('studentId', 'name email phoneNumber')
+      .sort({ createdAt: -1 });
+
+    const monthlyData = {};
+    const now = new Date();
+
+    // Generate last 6 months data
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthlyData[monthKey] = {
+        month: date.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' }),
+        totalExams: 0,
+        averageScore: 0,
+        passRate: 0,
+        participationRate: 0,
+        scores: []
+      };
+    }
+
+    results.forEach(student => {
+      student.results.forEach(result => {
+        const resultDate = new Date(result.date || result.createdAt);
+        const monthKey = `${resultDate.getFullYear()}-${String(resultDate.getMonth() + 1).padStart(2, '0')}`;
+
+        if (monthlyData[monthKey]) {
+          monthlyData[monthKey].totalExams++;
+          const score = (result.correctAnswers / result.totalQuestions) * 100;
+          monthlyData[monthKey].scores.push(score);
+        }
+      });
+    });
+
+    // Calculate final statistics
+    Object.keys(monthlyData).forEach(key => {
+      const data = monthlyData[key];
+      if (data.scores.length > 0) {
+        data.averageScore = Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length);
+        data.passRate = Math.round((data.scores.filter(score => score >= 60).length / data.scores.length) * 100);
+        data.participationRate = Math.round((data.scores.length / data.totalExams) * 100) || 0;
+      }
+    });
+
+    return Object.values(monthlyData);
+  } catch (error) {
+    console.error('Error in getMonthlyComparison:', error);
+    return [];
+  }
+};
+
+// ✅ Get performance trends
+const getPerformanceTrends = async () => {
+  try {
+    const results = await StudentExamResult.find()
+      .populate('studentId', 'name email phoneNumber')
+      .sort({ createdAt: -1 });
+
+    const trendsData = {};
+    const now = new Date();
+
+    // Generate last 6 months data
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      trendsData[monthKey] = {
+        date: date.toLocaleDateString('ar-EG', { month: 'short', year: 'numeric' }),
+        participation: 0,
+        averageScore: 0,
+        scores: [],
+        totalStudents: new Set()
+      };
+    }
+
+    results.forEach(student => {
+      student.results.forEach(result => {
+        const resultDate = new Date(result.date || result.createdAt);
+        const monthKey = `${resultDate.getFullYear()}-${String(resultDate.getMonth() + 1).padStart(2, '0')}`;
+
+        if (trendsData[monthKey]) {
+          trendsData[monthKey].totalStudents.add(student.studentId._id.toString());
+          const score = (result.correctAnswers / result.totalQuestions) * 100;
+          trendsData[monthKey].scores.push(score);
+        }
+      });
+    });
+
+    // Calculate final statistics
+    const trends = Object.keys(trendsData).map(key => {
+      const data = trendsData[key];
+      const participation = data.totalStudents.size;
+      const averageScore = data.scores.length > 0 ?
+        Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length) : 0;
+
+      return {
+        date: data.date,
+        participation,
+        averageScore
+      };
+    });
+
+    return trends;
+  } catch (error) {
+    console.error('Error in getPerformanceTrends:', error);
+    return [];
+  }
+};
+
 // ✅ تصدير جميع الدوال
 module.exports = {
   saveExamResult,
@@ -206,5 +317,7 @@ module.exports = {
   getStudentRankById,
   getStudentsByExam,
   getTopPerformers,
-  getStudentsByExamId
+  getStudentsByExamId,
+  getMonthlyComparison,
+  getPerformanceTrends
 };
