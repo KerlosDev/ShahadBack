@@ -20,6 +20,16 @@ const courseSchema = new mongoose.Schema({
       return !this.isFree;
     },
   },
+  courseLink: {
+    name: {
+      type: String,
+      default: "",
+    },
+    url: {
+      type: String,
+      default: "",
+    },
+  },
   isFree: {
     type: Boolean,
     default: false,

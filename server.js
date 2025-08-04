@@ -22,6 +22,7 @@ const bookOrderRoutes = require("./routes/bookOrderRoutes");
 const courseAnalyticsRoutes = require("./routes/courseAnalyticsRoutes");
 const courseWithEnrollmentRoutes = require("./routes/courseWithEnrollmentRoutes");
 const packageRoutes = require("./routes/packageRoutes");
+const videoRoutes = require("./routes/videoRoutes");
 
 const dashboardStatsRoutes = require("./routes/dashboardStatsRoutes");
 const studentRatingRoutes = require("./routes/studentRatingRoutes");
@@ -41,7 +42,8 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '2gb' }));
+app.use(express.urlencoded({ limit: '2gb', extended: true }));
 
 app.use('/auth', authRoutes);
 app.use('/active', activitionRoutes);
@@ -63,6 +65,7 @@ app.use('/book-orders', bookOrderRoutes);
 app.use('/course-analytics', courseAnalyticsRoutes);
 app.use('/course-data', courseWithEnrollmentRoutes);
 app.use('/packages', packageRoutes);
+app.use('/video', videoRoutes);
 
 // Student rating routes
 app.use('/student-ratings', studentRatingRoutes);

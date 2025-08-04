@@ -45,6 +45,10 @@ const createCourseWithImage = async (body, imageFile = null) => {
     level: body.level,
     chapters,
     exams,
+    courseLink: {
+      name: body.courseLinkName || "",
+      url: body.courseLinkUrl || ""
+    },
     isDraft: body.isDraft === "true" || body.isDraft === true,
     scheduledPublishDate: body.scheduledPublishDate ? new Date(body.scheduledPublishDate) : null,
     isScheduled: body.isScheduled === "true" || body.isScheduled === true,
@@ -123,6 +127,12 @@ const updateCourse = async (courseId, body, imageFile = null) => {
   course.level = body.level || course.level;
   course.chapters = chapters;
   course.exams = exams;
+
+  // Update course link
+  course.courseLink = {
+    name: body.courseLinkName || course.courseLink?.name || "",
+    url: body.courseLinkUrl || course.courseLink?.url || ""
+  };
   if (typeof body.isDraft !== "undefined") {
     course.isDraft = body.isDraft === "true" || body.isDraft === true;
   }
@@ -158,7 +168,7 @@ const getCourseById = async (req, res) => {
 
   const course = await Course.findOne({
     _id: id,
-      $or: [
+    $or: [
       { isDraft: false },
       { publishStatus: "published" }
     ]
