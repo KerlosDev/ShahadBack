@@ -151,7 +151,7 @@ const getCourseWithEnrollmentCheck = async (req, res) => {
                         return lessonData;
                     })
                 })),
-                exams: isEnrolled ? course.exams : [] // Only show exams if enrolled
+                exams: course.exams // Only show exams if enrolled
             },
             enrollmentMessage: isEnrolled
                 ? "أنت مشترك في هذا الكورس"
